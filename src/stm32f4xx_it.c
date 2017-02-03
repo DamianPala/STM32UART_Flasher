@@ -29,6 +29,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
+#include "USART.h"
+#include "flasher.h"
 
 /** @addtogroup STM32F4xx_StdPeriph_Examples
   * @{
@@ -137,6 +139,27 @@ void PendSV_Handler(void)
 {
 }
 
+
+void USART1_IRQHandler(void)
+{
+    int_Handler();
+}
+
+void TIM3_IRQHandler(void)
+{
+if (TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)             // Just a precaution (RESET = 0)
+{
+    TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);                  // Clear TIM3 Ch.1 flag
+    //static uint16_t fcount = 0;
+    fcount++;
+    if(fcount>2000)
+    {
+        fcount = 0;
+        timeout = 1;
+        trace_puts("DUP");
+    }
+}
+}
 /**
   * @brief  This function handles SysTick Handler.
   * @param  None
