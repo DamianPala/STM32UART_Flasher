@@ -150,7 +150,8 @@ void int_Handler(void)
 
 
     // check if the USART1 receive interrupt flag was set
-    if( USART_GetITStatus(USART1, USART_IT_RXNE) ){
+    if( USART_GetITStatus(USART1, USART_IT_RXNE) )
+    {
 
         if( countr > (RXBUFFSIZE-2) ){
             ClearBuff();

@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include "diag/Trace.h"
 #include "cmsis_device.h"
-#include "USART.h"
-#include "flasher.h"
+//#include "USART.h"
+//#include "flasher.h"
 #include "BinArray.h"
+
+#include "uart_flasher_driver.h"
+#include "uart_flasher_manager.h"
 
 #define GPIOx(PORT_NUMBER)            ((GPIO_TypeDef *)(GPIOA_BASE + (GPIOB_BASE-GPIOA_BASE)*(PORT_NUMBER)))
 #define PIN_MASK(PIN)                 (1 << (PIN))
@@ -34,19 +37,15 @@ void LedPortInit(void)
 
 int main(void)
 {
+  trace_puts("Hello ARM World!");
+  trace_printf("System clock: %u Hz\n", SystemCoreClock);
 
-    SystemInit();
+  UFD_Init();
 
-    Config();
-    FlasherConfig();
-
-    trace_puts("Hello ARM World!");
-    trace_printf("System clock: %u Hz\n", SystemCoreClock);
-
-
+  UFM_FlashDevice(BinArray2, BinArraySize2);
 
 	while(1)
 	{
-	    StartFlashing(BinArray,BinArraySize);
+
 	}
 }

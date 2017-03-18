@@ -140,10 +140,10 @@ void PendSV_Handler(void)
 }
 
 
-void USART1_IRQHandler(void)
-{
-    int_Handler();
-}
+//void USART1_IRQHandler(void)
+//{
+//    int_Handler();
+//}
 
 void TIM3_IRQHandler(void)
 {
