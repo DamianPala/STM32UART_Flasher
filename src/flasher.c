@@ -125,7 +125,7 @@ uint8_t StartProcedure(void)
     return 2;
 }
 
-uint8_t WriteMemory(uint32_t indexStart, uint32_t indexStop)
+uint8_t WriteMemoryT(uint32_t indexStart, uint32_t indexStop)
 {
     uint32_t index = 0;
 
@@ -344,14 +344,14 @@ uint8_t StartFlashing(uint8_t *bin, uint32_t NumberOfBytes)
 
     for(i = 0; i< NumberOfPackets; i++)
     {
-        WriteMemory(i*128, i*128+128);
+        WriteMemoryT(i*128, i*128+128);
         *PointeronStartAddress += 0x80;
     }
 
 
     if(Rest != 0)
     {
-    WriteMemory(i*128, i*128+Rest);
+    WriteMemoryT(i*128, i*128+Rest);
     }
 
 

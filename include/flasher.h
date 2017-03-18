@@ -55,7 +55,7 @@ void Timer3Start(void);
 void Timer3Stop(void);
 
 uint8_t StartProcedure(void);
-uint8_t WriteMemoryT(uint32_t indexStart, uint32_t indexStop);
+uint8_t WriteMemory(uint32_t indexStart, uint32_t indexStop);
 uint8_t StartFlashing(uint8_t *flash,uint32_t NumberOfBytes);
 uint8_t GlobalErase(void);
 

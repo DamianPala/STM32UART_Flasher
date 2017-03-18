@@ -42,6 +42,7 @@
 #define DEVICE_MIN_BYTES_TO_MEM_WRITE         4
 #define DEVICE_NUM_OF_BYTES_TO_WRITE_SIZE     1
 #define DEVICE_CHECKSUM_SIZE                  1
+#define SEND_DATA_MAX_TRIALS                  3
 
 /*---------------------------- LOCAL FUNCTION-LIKE MACROS ------------------------------*/
 #define SWAP_UINT32(x)                        (((x) >> 24) | (((x) & 0x00FF0000) >> 8) | (((x) & 0x0000FF00) << 8) | ((x) << 24))
@@ -98,6 +99,7 @@ void PreparePacketWithChecksum(uint8_t * const data, size_t dataSize);
 void PrepareMemDataPacket(uint8_t * const data, size_t dataSize);
 Status_T StartFlashingProcedure(void);
 Status_T MassErase(void);
+Status_T PageErase(uint16_t startPageNumber, uint16_t numOfPagesToErase);
 Status_T WriteMemory(uint32_t address, uint8_t *data, size_t size);
 
 /*======================================================================================*/
@@ -108,6 +110,8 @@ void UFM_DataReceivedNotification(void)
   ReceivedDataReady = true;
 }
 
+#define FLASH_DEVICE_MAX_TRIALS         3
+
 UFM_FlashingStatus_T UFM_FlashDevice(uint8_t *data, size_t size)
 {
   UFM_FlashingStatus_T ret = FLASHING_STATUS_FAILED;
@@ -115,6 +119,7 @@ UFM_FlashingStatus_T UFM_FlashDevice(uint8_t *data, size_t size)
   size_t numOfFullPackets = 0;
   bool isPartialPacketToSend = false;
   uint32_t offset = 0;
+  uint8_t trialCnt = 0;
 
   numOfFullPackets = size/WRITE_DATA_BLOCK_SIZE;
 
@@ -130,53 +135,59 @@ UFM_FlashingStatus_T UFM_FlashDevice(uint8_t *data, size_t size)
   trace_printf("Number of full packets to write: %d\n", numOfFullPackets);
   trace_printf("Number of bytes to write in partial packet: %d\n", size % WRITE_DATA_BLOCK_SIZE);
 
-  stepRet = StartFlashingProcedure();
+  while ( (trialCnt < FLASH_DEVICE_MAX_TRIALS) && (ret != FLASHING_STATUS_SUCCESS) )
+  {
+    trialCnt++;
+    offset = 0;
 
-  if (STATUS_SUCCESS == stepRet)
-  {
-    trace_puts("Flashing starting success");
-    stepRet = MassErase();
-  }
-  else
-  {
-    trace_puts("Flashing starting error");
-    ret = FLASHING_STATUS_FAILED;
-  }
+    stepRet = StartFlashingProcedure();
 
-  if (STATUS_SUCCESS == stepRet)
-  {
-    trace_puts("Mass erase success");
-    for (uint16_t packetCnt = 0; packetCnt < numOfFullPackets; packetCnt++)
+    if (STATUS_SUCCESS == stepRet)
     {
-      stepRet = WriteMemory(DEVICE_CODE_MEMORY_START_ADDR + offset, data + offset, WRITE_DATA_BLOCK_SIZE);
-      offset += WRITE_DATA_BLOCK_SIZE;
+      trace_puts("Flashing starting success");
+      stepRet = MassErase();
+    }
+    else
+    {
+      trace_puts("Flashing starting error");
+      ret = FLASHING_STATUS_FAILED;
+    }
 
-      if (stepRet != STATUS_SUCCESS)
+    if (STATUS_SUCCESS == stepRet)
+    {
+      trace_puts("Mass erase success");
+      for (uint16_t packetCnt = 0; packetCnt < numOfFullPackets; packetCnt++)
       {
-        break;
+        stepRet = WriteMemory(DEVICE_CODE_MEMORY_START_ADDR + offset, data + offset, WRITE_DATA_BLOCK_SIZE);
+        offset += WRITE_DATA_BLOCK_SIZE;
+
+        if (stepRet != STATUS_SUCCESS)
+        {
+          break;
+        }
+      }
+
+      if (isPartialPacketToSend && (STATUS_SUCCESS == stepRet))
+      {
+        stepRet = WriteMemory(DEVICE_CODE_MEMORY_START_ADDR + offset, data + offset, size % WRITE_DATA_BLOCK_SIZE);
       }
     }
-
-    if (isPartialPacketToSend && (STATUS_SUCCESS == stepRet))
+    else
     {
-      stepRet = WriteMemory(DEVICE_CODE_MEMORY_START_ADDR + offset, data + offset, size % WRITE_DATA_BLOCK_SIZE);
+      trace_puts("Mass erase error");
+      ret = FLASHING_STATUS_FAILED;
     }
-  }
-  else
-  {
-    trace_puts("Mass erase error");
-    ret = FLASHING_STATUS_FAILED;
-  }
 
-  if (STATUS_SUCCESS == stepRet)
-  {
-    trace_puts("Flashing packets success");
-    ret = FLASHING_STATUS_SUCCESS;
-  }
-  else
-  {
-    trace_puts("Flashing packets error");
-    ret = FLASHING_STATUS_FAILED;
+    if (STATUS_SUCCESS == stepRet)
+    {
+      trace_puts("Flashing packets success");
+      ret = FLASHING_STATUS_SUCCESS;
+    }
+    else
+    {
+      trace_puts("Flashing packets error");
+      ret = FLASHING_STATUS_FAILED;
+    }
   }
 
   return ret;
@@ -260,7 +271,54 @@ Status_T MassErase(void)
   return ret;
 }
 
-Status_T WriteMemoryT(uint32_t address, uint8_t *data, size_t size)
+//Status_T PageErase(uint16_t startPageNumber, uint16_t numOfPagesToErase)
+//{
+//  // TODO: may be implement in future
+////  Status_T ret = STATUS_FAILED;
+////  SendData_T sendStatus = SEND_DATA_ERROR;
+////  uint8_t cmdToSend[2];
+////
+////  cmdToSend[0] = DEVICE_EXTENDED_ERASE_CMD_H;
+////  cmdToSend[1] = DEVICE_EXTENDED_ERASE_CMD_L;
+////
+////  sendStatus = SendData(cmdToSend, sizeof(cmdToSend));
+////
+////  if (SEND_DATA_RX_ACK == sendStatus)
+////  {
+////    cmdToSend[0] = DEVICE_MASS_ERASE_CMD_H;
+////    cmdToSend[1] = DEVICE_MASS_ERASE_CMD_L;
+////
+////    PreparePacketWithChecksum(cmdToSend, sizeof(cmdToSend));
+////    sendStatus = SendData(PacketToSend.packetData, PacketToSend.packetSize);
+////
+////    switch (sendStatus)
+////    {
+////      case SEND_DATA_RX_ACK:
+////      {
+////        ret = STATUS_SUCCESS;
+////
+////        break;
+////      }
+////      case SEND_DATA_RX_NACK:
+////      case SEND_DATA_TIMEOUT:
+////      case SEND_DATA_ERROR:
+////      default:
+////      {
+////        ret = STATUS_FAILED;
+////
+////        break;
+////      }
+////    }
+////  }
+////  else
+////  {
+////    ret = STATUS_FAILED;
+////  }
+////
+////  return ret;
+//}
+
+Status_T WriteMemory(uint32_t address, uint8_t *data, size_t size)
 {
   Status_T ret = STATUS_FAILED;
   SendData_T sendStatus = SEND_DATA_ERROR;
@@ -383,46 +441,98 @@ void PrepareMemDataPacket(uint8_t * const data, size_t dataSize)
   PacketToSend.packetSize = numOfBytesToWrite + DEVICE_NUM_OF_BYTES_TO_WRITE_SIZE + DEVICE_CHECKSUM_SIZE;
 }
 
+typedef enum SendDataState_Tag
+{
+  SEND_DATA_STATE_SEND = 1,
+  SEND_DATA_STATE_CHECK_RSP,
+  SEND_DATA_TRY_AGAIN,
+  SEND_DATA_EXIT,
+} SendDataState_T;
+
 SendData_T SendData(uint8_t *data, size_t size)
 {
   SendData_T ret = SEND_DATA_ERROR;
-
+  SendDataState_T sendDataState = SEND_DATA_STATE_SEND;
+  uint8_t loopCnt = 10;
   uint32_t timeout = SEND_TIMEOUT;
+  uint8_t trialCnt = 0;
 
-  for (size_t byteCnt = 0; byteCnt < size; byteCnt++)
+  while( (loopCnt > 0) && (sendDataState != SEND_DATA_EXIT) )
   {
-    UFD_SendByte(data[byteCnt]);
-  }
+    loopCnt--;
 
-  ReceivedDataReady = false;
-
-  while( (timeout > 0) && (false == ReceivedDataReady) )
-  {
-    timeout--;
-  }
-
-  if (0 == timeout)
-  {
-    trace_puts("Send data timeout");
-    ret = SEND_DATA_TIMEOUT;
-  }
-  else
-  {
-    uint8_t receivedResponse = 0;
-
-    UFD_ReceiveByte(&receivedResponse);
-
-    if (DEVICE_RSP_ACK == receivedResponse)
+    switch (sendDataState)
     {
-      ret = SEND_DATA_RX_ACK;
-    }
-    else if (DEVICE_RSP_NACK == receivedResponse)
-    {
-      ret = SEND_DATA_RX_NACK;
-    }
-    else
-    {
-      ret = SEND_DATA_ERROR;
+      case SEND_DATA_STATE_SEND:
+      {
+        for (size_t byteCnt = 0; byteCnt < size; byteCnt++)
+        {
+          UFD_SendByte(data[byteCnt]);
+        }
+
+        ReceivedDataReady = false;
+
+        while( (timeout > 0) && (false == ReceivedDataReady) )
+        {
+          timeout--;
+        }
+
+        if (0 == timeout)
+        {
+          trace_puts("Send data timeout");
+          ret = SEND_DATA_TIMEOUT;
+          sendDataState = SEND_DATA_TRY_AGAIN;
+        }
+        else
+        {
+          sendDataState = SEND_DATA_STATE_CHECK_RSP;
+        }
+
+        break;
+      }
+      case SEND_DATA_STATE_CHECK_RSP:
+      {
+        uint8_t receivedResponse = 0;
+
+        UFD_ReceiveByte(&receivedResponse);
+
+        if (DEVICE_RSP_ACK == receivedResponse)
+        {
+          ret = SEND_DATA_RX_ACK;
+        }
+        else if (DEVICE_RSP_NACK == receivedResponse)
+        {
+          ret = SEND_DATA_RX_NACK;
+          sendDataState = SEND_DATA_TRY_AGAIN;
+        }
+        else
+        {
+          ret = SEND_DATA_ERROR;
+          sendDataState = SEND_DATA_TRY_AGAIN;
+        }
+
+        break;
+      }
+      case SEND_DATA_TRY_AGAIN:
+      {
+        if (trialCnt < SEND_DATA_MAX_TRIALS)
+        {
+          trialCnt++;
+          sendDataState = SEND_DATA_STATE_SEND;
+        }
+        else
+        {
+          sendDataState = SEND_DATA_EXIT;
+        }
+
+        break;
+      }
+      case SEND_DATA_EXIT:
+      default:
+      {
+        /* Do nothing */
+        break;
+      }
     }
   }
 
