@@ -38,8 +38,10 @@
 #define DEVICE_EXTENDED_ERASE_CMD_L           0xBB
 #define DEVICE_MASS_ERASE_CMD_H               0xFF
 #define DEVICE_MASS_ERASE_CMD_L               0xFF
-#define DEVICE_READOUT_PROTECT_CMD_H		  0X82
-#define DEVICE_READOUT_PROTECT_CMD_L		  0X7D
+#define DEVICE_READOUT_PROTECT_CMD_H		  0x82
+#define DEVICE_READOUT_PROTECT_CMD_L		  0x7D
+#define DEVICE_READOUT_UNPROTECT_CMD_H		  0x92
+#define DEVICE_READOUT_UNPROTECT_CMD_L		  0x6D
 #define DEVICE_CODE_MEMORY_START_ADDR         0x08000000
 #define DEVICE_MIN_BYTES_TO_MEM_WRITE         4
 #define DEVICE_NUM_OF_BYTES_TO_WRITE_SIZE     1
@@ -104,6 +106,7 @@ Status_T MassErase(void);
 Status_T PageErase(uint16_t startPageNumber, uint16_t numOfPagesToErase);
 Status_T WriteMemory(uint32_t address, uint8_t *data, size_t size);
 Status_T ReadoutProtect(void);
+Status_T ReadoutUnprotect(void);
 // tutaj napisac funkcje do blokowania flasha
 
 /*======================================================================================*/
@@ -552,9 +555,50 @@ Status_T ReadoutProtect(void)
 	cmdToSend[0] = DEVICE_READOUT_PROTECT_CMD_H;
 	cmdToSend[1] = DEVICE_READOUT_PROTECT_CMD_L;
 
+	sendStatus = SendData(cmdToSend, sizeof(cmdToSend));
 
+		if (SEND_DATA_RX_ACK == sendStatus)
+		{
+			/* TODO: check this */
+			sendStatus = SendData(NULL,0);
+
+		    switch (sendStatus)
+		    {
+		      case SEND_DATA_RX_ACK:
+		      {
+		        ret = STATUS_SUCCESS;
+
+		        break;
+		      }
+		      case SEND_DATA_RX_NACK:
+		      case SEND_DATA_TIMEOUT:
+		      case SEND_DATA_ERROR:
+		      default:
+		      {
+		        ret = STATUS_FAILED;
+		        break;
+		      }
+		    }
+		}
 	return ret;
 }
+
+
+Status_T ReadoutUnprotect(void)
+{
+	Status_T ret = STATUS_FAILED;
+	SendData_T sendStatus = SEND_DATA_ERROR;
+	uint8_t cmdToSend[2];
+
+	cmdToSend[0] = DEVICE_READOUT_PROTECT_CMD_H;
+	cmdToSend[1] = DEVICE_READOUT_PROTECT_CMD_L;
+
+	sendStatus = SendData(cmdToSend, sizeof(cmdToSend));
+
+
+}
+
+
 
 /**
  * @}
