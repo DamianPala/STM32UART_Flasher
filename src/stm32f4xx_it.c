@@ -156,7 +156,6 @@ if (TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)             // Just a precaution
     {
         fcount = 0;
         timeout = 1;
-        trace_puts("DUP");
     }
 }
 }

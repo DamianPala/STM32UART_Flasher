@@ -38,6 +38,8 @@
 #define DEVICE_EXTENDED_ERASE_CMD_L           0xBB
 #define DEVICE_MASS_ERASE_CMD_H               0xFF
 #define DEVICE_MASS_ERASE_CMD_L               0xFF
+#define DEVICE_READOUT_PROTECT_CMD_H		  0X82
+#define DEVICE_READOUT_PROTECT_CMD_L		  0X7D
 #define DEVICE_CODE_MEMORY_START_ADDR         0x08000000
 #define DEVICE_MIN_BYTES_TO_MEM_WRITE         4
 #define DEVICE_NUM_OF_BYTES_TO_WRITE_SIZE     1
@@ -101,6 +103,8 @@ Status_T StartFlashingProcedure(void);
 Status_T MassErase(void);
 Status_T PageErase(uint16_t startPageNumber, uint16_t numOfPagesToErase);
 Status_T WriteMemory(uint32_t address, uint8_t *data, size_t size);
+Status_T ReadoutProtect(void);
+// tutaj napisac funkcje do blokowania flasha
 
 /*======================================================================================*/
 /*                  ####### EXPORTED FUNCTIONS DEFINITIONS #######                      */
@@ -537,6 +541,19 @@ SendData_T SendData(uint8_t *data, size_t size)
   }
 
   return ret;
+}
+
+Status_T ReadoutProtect(void)
+{
+	Status_T ret = STATUS_FAILED;
+	SendData_T sendStatus = SEND_DATA_ERROR;
+	uint8_t cmdToSend[2];
+
+	cmdToSend[0] = DEVICE_READOUT_PROTECT_CMD_H;
+	cmdToSend[1] = DEVICE_READOUT_PROTECT_CMD_L;
+
+
+	return ret;
 }
 
 /**
