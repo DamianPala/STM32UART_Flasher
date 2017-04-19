@@ -142,6 +142,7 @@ UFM_FlashingStatus_T UFM_FlashDevice(uint8_t *data, size_t size)
   trace_printf("Number of full packets to write: %d\n", numOfFullPackets);
   trace_printf("Number of bytes to write in partial packet: %d\n", size % WRITE_DATA_BLOCK_SIZE);
 
+  // przyjête arbitralnie
   while ( (trialCnt < FLASH_DEVICE_MAX_TRIALS) && (ret != FLASHING_STATUS_SUCCESS) )
   {
     trialCnt++;
@@ -149,6 +150,7 @@ UFM_FlashingStatus_T UFM_FlashDevice(uint8_t *data, size_t size)
 
     stepRet = StartFlashingProcedure();
 
+    // odblokowanie flasha tutaj
     if (STATUS_SUCCESS == stepRet)
     {
       trace_puts("Flashing starting success");
@@ -185,6 +187,7 @@ UFM_FlashingStatus_T UFM_FlashDevice(uint8_t *data, size_t size)
       ret = FLASHING_STATUS_FAILED;
     }
 
+    // blokowanie flasha tutaj
     if (STATUS_SUCCESS == stepRet)
     {
       trace_puts("Flashing packets success");
@@ -562,23 +565,23 @@ Status_T ReadoutProtect(void)
 			/* TODO: check this */
 			sendStatus = SendData(NULL,0);
 
-		    switch (sendStatus)
-		    {
-		      case SEND_DATA_RX_ACK:
-		      {
-		        ret = STATUS_SUCCESS;
+			switch (sendStatus)
+			{
+			  case SEND_DATA_RX_ACK:
+			  {
+				ret = STATUS_SUCCESS;
 
-		        break;
-		      }
-		      case SEND_DATA_RX_NACK:
-		      case SEND_DATA_TIMEOUT:
-		      case SEND_DATA_ERROR:
-		      default:
-		      {
-		        ret = STATUS_FAILED;
-		        break;
-		      }
-		    }
+				break;
+			  }
+			  case SEND_DATA_RX_NACK:
+			  case SEND_DATA_TIMEOUT:
+			  case SEND_DATA_ERROR:
+			  default:
+			  {
+				ret = STATUS_FAILED;
+				break;
+			  }
+			}
 		}
 	return ret;
 }
@@ -590,12 +593,37 @@ Status_T ReadoutUnprotect(void)
 	SendData_T sendStatus = SEND_DATA_ERROR;
 	uint8_t cmdToSend[2];
 
-	cmdToSend[0] = DEVICE_READOUT_PROTECT_CMD_H;
-	cmdToSend[1] = DEVICE_READOUT_PROTECT_CMD_L;
+	cmdToSend[0] = DEVICE_READOUT_UNPROTECT_CMD_H;
+	cmdToSend[1] = DEVICE_READOUT_UNPROTECT_CMD_L;
 
 	sendStatus = SendData(cmdToSend, sizeof(cmdToSend));
 
+		if (SEND_DATA_RX_ACK == sendStatus)
+		{
+			/* TODO: check this */
+			sendStatus = SendData(NULL,0);
 
+			switch (sendStatus)
+			{
+			  case SEND_DATA_RX_ACK:
+			  {
+				ret = STATUS_SUCCESS;
+
+				break;
+			  }
+			  case SEND_DATA_RX_NACK:
+			  case SEND_DATA_TIMEOUT:
+			  case SEND_DATA_ERROR:
+			  default:
+			  {
+				ret = STATUS_FAILED;
+				break;
+			  }
+			}
+		}
+
+
+	return ret;
 }
 
 
