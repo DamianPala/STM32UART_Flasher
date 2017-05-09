@@ -151,14 +151,26 @@ UFM_FlashingStatus_T UFM_FlashDevice(uint8_t *data, size_t size)
     stepRet = StartFlashingProcedure();
 
     // odblokowanie flasha tutaj
+
     if (STATUS_SUCCESS == stepRet)
     {
-      trace_puts("Flashing starting success");
+        trace_puts("Flashing starting success");
+        stepRet = ReadoutUnprotect();
+    }
+    else
+    {
+        trace_puts("Flashing starting error");
+        ret = FLASHING_STATUS_FAILED;
+    }
+
+    if (STATUS_SUCCESS == stepRet)
+    {
+      trace_puts("ReadoutUnprotect success");
       stepRet = MassErase();
     }
     else
     {
-      trace_puts("Flashing starting error");
+      trace_puts("ReadoutUnprotect error");
       ret = FLASHING_STATUS_FAILED;
     }
 
@@ -187,16 +199,26 @@ UFM_FlashingStatus_T UFM_FlashDevice(uint8_t *data, size_t size)
       ret = FLASHING_STATUS_FAILED;
     }
 
-    // blokowanie flasha tutaj
     if (STATUS_SUCCESS == stepRet)
     {
       trace_puts("Flashing packets success");
-      ret = FLASHING_STATUS_SUCCESS;
+      stepRet = ReadoutProtect();
     }
     else
     {
       trace_puts("Flashing packets error");
       ret = FLASHING_STATUS_FAILED;
+    }
+
+    if (STATUS_SUCCESS == stepRet)
+    {
+		trace_puts("ReadoutProtect success");
+		ret = FLASHING_STATUS_SUCCESS;
+    }
+    else
+    {
+		trace_puts("ReadoutProtect error");
+		ret = FLASHING_STATUS_FAILED;
     }
   }
 
