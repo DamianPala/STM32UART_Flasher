@@ -34,7 +34,9 @@ void LedPortInit(void)
 int main(void)
 {
  BootJumperStatus_T BootJumperStatus = BOOT_JUMPER_STATUS_FAILED;
+
  BootJumperStatus = Boot_StartupHandler();
+
  if(BootJumperStatus == BOOT_JUMPER_STATUS_FAILED)
  {
 	 trace_printf("BootStartupHandler()->BOOT_JUMPER_STATUS_FAILED");

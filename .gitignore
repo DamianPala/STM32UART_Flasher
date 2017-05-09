@@ -2,3 +2,8 @@ Debug/*
 Release/*
 .settings/
 /Debug/
+
+flasher_device_side/Debug/*
+Release/*
+.settings/
+/Debug/

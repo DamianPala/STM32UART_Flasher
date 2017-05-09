@@ -16,17 +16,15 @@
 #define BOOT_BKP_VAL		(uint32_t)0x1
 #define BOOT_BKP_REG_NR		RTC_BKP_DR0
 #define BOOTLOADER_ADDRESS	0x1FFF0000
-#define APPLICATION_ADDRESS	BOOTLOADER_ADDRESS + 4
+#define APPLICATION_ADDRESS	0x1FFF0004
+#define RAM_VAl				0x20002E48
 /*---------------------------- LOCAL FUNCTION-LIKE MACROS ------------------------------*/
 
 /*======================================================================================*/
 /*                      ####### LOCAL TYPE DECLARATIONS #######                         */
 /*======================================================================================*/
-void (* const JumpToBootloader)(void) = (void (*)(void))((uint32_t*)APPLICATION_ADDRESS);
+void (*JumpToBootloader)(void);
 
-//void (* const JumpToBootloader)(void) = ;
-
-//void (* const JumpToBootloader(void) = (void (*) (void)) (*((uint32_t *)  BOOTLOADER_ADDRESS));
 /*-------------------------------- OTHER TYPEDEFS --------------------------------------*/
 
 /*------------------------------------- ENUMS ------------------------------------------*/
@@ -51,6 +49,8 @@ typedef enum Status_Tag
 /*======================================================================================*/
 void Boot_Init(void);
 void Boot_Deinit(void);
+void System_ReInit(void);
+static void ResetSysClock(void);
 /*======================================================================================*/
 /*                  ####### EXPORTED FUNCTIONS DEFINITIONS #######                      */
 /*======================================================================================*/
@@ -59,6 +59,8 @@ BootJumperStatus_T Boot_StartupHandler(void)
 {
 	Status_T stepRet = STATUS_FAILED;
 	BootJumperStatus_T ret = BOOT_JUMPER_STATUS_FAILED;
+
+	JumpToBootloader = (void(*)(void))(*((uint32_t *) APPLICATION_ADDRESS));
 
 	Boot_Init();
 
@@ -75,9 +77,8 @@ BootJumperStatus_T Boot_StartupHandler(void)
 
 		Boot_Deinit();
 
-		__set_MSP(*(volatile uint32_t*)(BOOTLOADER_ADDRESS));
+		__set_MSP(RAM_VAl);
 
-//		JumpToBootloader = *(__IO uint32_t*) (BOOTLOADER_ADDRESS + 4);
 		JumpToBootloader();
 
 		ret = BOOT_JUMPER_STATUS_SUCCESS;
@@ -147,6 +148,71 @@ void Boot_Deinit(void)
 
 	/* Disable the RTC Clock */
 	RCC_RTCCLKCmd(DISABLE);
+}
+
+void System_ReInit(void)
+{
+  /* FPU settings ------------------------------------------------------------*/
+  #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+    SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
+  #endif
+  /* Reset the RCC clock configuration to the default reset state ------------*/
+  /* Set HSION bit */
+  RCC->CR |= (uint32_t)0x00000001;
+
+  /* Reset CFGR register */
+  RCC->CFGR = 0x00000000;
+
+  /* Reset HSEON, CSSON and PLLON bits */
+  RCC->CR &= (uint32_t)0xFEF6FFFF;
+
+  /* Reset PLLCFGR register */
+  RCC->PLLCFGR = 0x24003010;
+
+  /* Reset HSEBYP bit */
+  RCC->CR &= (uint32_t)0xFFFBFFFF;
+
+  /* Disable all interrupts */
+  RCC->CIR = 0x00000000;
+
+#ifdef DATA_IN_ExtSRAM
+  SystemInit_ExtMemCtl();
+#endif /* DATA_IN_ExtSRAM */
+
+  /* Configure the System clock source, PLL Multiplier and Divider factors,
+     AHB/APBx prescalers and Flash settings ----------------------------------*/
+  ResetSysClock();
+
+  /* Configure the Vector Table location add offset address ------------------*/
+#ifdef VECT_TAB_SRAM
+  SCB->VTOR = SRAM_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal SRAM */
+#else
+  //SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH */
+#endif
+}
+
+
+static void ResetSysClock(void)
+{
+
+/******************************************************************************/
+/*                        HSI used as System clock source                     */
+/******************************************************************************/
+
+  /* At this stage the HSI is already enabled and used as System clock source */
+
+  /* Configure Flash prefetch, Instruction cache, Data cache and wait state */
+  FLASH->ACR = FLASH_ACR_ICEN |FLASH_ACR_DCEN |FLASH_ACR_LATENCY_0WS;
+
+  /* HCLK = SYSCLK / 1*/
+  RCC->CFGR |= RCC_CFGR_HPRE_DIV1;
+
+  /* PCLK2 = HCLK / 1*/
+  RCC->CFGR |= RCC_CFGR_PPRE2_DIV1;
+
+  /* PCLK1 = HCLK / 1*/
+  RCC->CFGR |= RCC_CFGR_PPRE1_DIV1;
+
 }
 /**
  * @}
